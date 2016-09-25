@@ -2,6 +2,13 @@
 
 set -uexo pipefail
 
+if [ "$TRAVIS_OS_NAME" == osx ]; then
+    profile="vm_stat"
+else
+    profile="vmstat -s"
+fi
+date && $profile
+
 # add missing cc link in gdc-4.9.3 download
 if [ $DC = gdc ] && [ ! -f $(dirname $(which gdc))/cc ]; then
     ln -s gcc $(dirname $(which gdc))/cc
@@ -58,11 +65,23 @@ test_dmd() {
     fi
 }
 
-clone https://github.com/dlang/druntime.git ../druntime $TRAVIS_BRANCH
-clone https://github.com/dlang/phobos.git ../phobos $TRAVIS_BRANCH
+for proj in druntime phobos; do
+    if [ $TRAVIS_BRANCH != master ] && [ $TRAVIS_BRANCH != stable ] &&
+           ! curl -fsSLI https://api.github.com/repos/dlang/$proj/branches/$TRAVIS_BRANCH; then
+        # use master as fallback for other repos to test feature branches
+        clone https://github.com/dlang/$proj.git ../$proj master
+    else
+        clone https://github.com/dlang/$proj.git ../$proj $TRAVIS_BRANCH
+    fi
+done
 
 build
+date && $profile
 test
+date && $profile
 rebuild
+date && $profile
 rebuild
+date && $profile
 test_dmd
+date && $profile
